@@ -1,0 +1,30 @@
+1. **3D Printer Bed View**  
+   - A rectangular view representing the 3D printer bed should display the probe positions and current tool location from a top-down perspective.
+   - Each probe should be represented by a circle with a red outline and a dot in the center.
+   - The view should include a grid with a scale in millimeters (mm) that matches the dimensions of the printer bed.
+   - Below the bed view, there should be input fields to calibrate the bed dimensions.
+   - Both the bed view and bed dimension calibration fields should be located on the left side of the panel, with no other elements on this side.
+
+2. **Probe Slot Grid Configuration**  
+   - Input fields should allow the user to specify the number of probe slots in both rows and columns.
+
+3. **Probe Slot Position Calibration**  
+   - Input fields should allow the user to specify the X and Y coordinates for the top-left and bottom-right probe slots. These coordinates will be used to calibrate the positions of other probe slots.
+   - Next to each coordinate field, include a "Calibrate Slot Position" button for manual calibration.
+
+4. **Probe Top Height**  
+   - A field should allow the user to specify the top plane height of the probes.
+   - Include a "Calibrate" button next to this field.
+
+5. **Probe Diameter**  
+   - An input field should be available for specifying the probe diameter.
+
+6. **Number of Active Probe Slots**  
+   - A field should allow the user to specify the number of active probe slots. For example, a 16x4 grid may have only 12 slots designated as active.
+
+7. **Configuration Load Buttons**  
+   - Include a "Load Existing Configuration" button at the top right, which will populate the fields with saved configuration data.
+   - Next to this, provide a "Load New Configuration" button to load a newly defined setup.
+
+8. **Execution Controls**
+   - At the bottom, add three buttons in a horizontal line: "STOP," "Test Run," and "Run."
