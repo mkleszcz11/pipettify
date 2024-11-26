@@ -1,11 +1,19 @@
 import tkinter as tk
 from tkinter import messagebox
+from PrinterController import PrinterController
+from gui_manual_movement import ManualMovementWindow
 
 class PrinterGUI(tk.Tk):
-    def __init__(self):
+    def __init__(self, printer_controller):
         super().__init__()
         self.title("Pipettify app")
         
+        # Reference to the PrinterController
+        self.printer_controller = printer_controller
+
+        # Add "Manual Movement" button
+        tk.Button(self, text="Manual Movement", command=self.open_manual_movement).pack(pady=10)
+
         # Default bed dimensions (in mm)
         self.bed_width = 220
         self.bed_height = 220
@@ -38,6 +46,10 @@ class PrinterGUI(tk.Tk):
         self.bed_height_entry.grid(row=1, column=1)
         
         tk.Button(bed_dim_frame, text="Load New Bed Dimensions", command=self.load_new_bed).grid(row=2, column=0, columnspan=2, pady=5)
+
+        # Tool Position Indicator
+        self.tool_position = None
+        self.update_tool_position()
 
         # Right Panel (Configuration Controls)
         right_panel = tk.Frame(self)
@@ -105,6 +117,27 @@ class PrinterGUI(tk.Tk):
         tk.Button(config_button_frame, text="Load Existing Configuration", command=self.load_existing_config).grid(row=0, column=0)
         tk.Button(config_button_frame, text="Load New Configuration", command=self.load_new_config).grid(row=0, column=1)
 
+        # Move to Coordinates Section
+        move_frame = tk.Frame(right_panel)
+        move_frame.pack(pady=5)
+
+        tk.Label(move_frame, text="X:").grid(row=0, column=0, padx=5, pady=2)
+        self.x_entry = tk.Entry(move_frame, width=10)
+        self.x_entry.grid(row=0, column=1, padx=5, pady=2)
+
+        tk.Label(move_frame, text="Y:").grid(row=1, column=0, padx=5, pady=2)
+        self.y_entry = tk.Entry(move_frame, width=10)
+        self.y_entry.grid(row=1, column=1, padx=5, pady=2)
+
+        tk.Label(move_frame, text="Z:").grid(row=2, column=0, padx=5, pady=2)
+        self.z_entry = tk.Entry(move_frame, width=10)
+        self.z_entry.grid(row=2, column=1, padx=5, pady=2)
+
+        tk.Button(move_frame, text="Move to Coordinates", command=self.move_to_coordinates).grid(row=0, column=2, padx=5, pady=2)
+
+        # Home button
+        tk.Button(move_frame, text="Home", command=self.printer_controller.home).grid(row=1, column=2, padx=5, pady=2)
+
         # Execution Controls
         controls_frame = tk.Frame(self)
         controls_frame.pack(side="bottom", pady=10)
@@ -144,6 +177,45 @@ class PrinterGUI(tk.Tk):
             if y < y1:
                 self.bed_canvas.create_line(x0, y, x1, y, fill="gray", dash=(2, 2), tag="grid_line")
                 self.bed_canvas.create_text(x0 - 5, y, text=str(i), fill="blue", tag="scale_text", anchor="e")
+
+    def update_tool_position(self):
+        """
+        Periodically update the tool position on the bed canvas based on the printer's current coordinates.
+        """
+        try:
+            # Update the current coordinates from the printer
+            self.printer_controller.update_current_coordinates()
+            x_mm = self.printer_controller.curr_x
+            y_mm = self.printer_controller.curr_y
+
+            # Scale the coordinates to fit the canvas
+            max_width = self.canvas_size - 2 * self.margin
+            max_height = self.canvas_size - 2 * self.margin
+            scale = min(max_width / self.bed_width, max_height / self.bed_height)
+            bed_outline_width = self.bed_width * scale
+            bed_outline_height = self.bed_height * scale
+            x0 = (self.canvas_size - bed_outline_width) / 2
+            y0 = (self.canvas_size - bed_outline_height) / 2
+
+            # Convert tool position to canvas coordinates
+            tool_x = x0 + x_mm * scale
+            tool_y = y0 + y_mm * scale
+
+            # Clear the previous tool position
+            self.bed_canvas.delete("tool_position")
+
+            # Draw a new tool position (as a blue circle)
+            radius = 5  # Radius of the tool indicator
+            self.bed_canvas.create_oval(
+                tool_x - radius, tool_y - radius,
+                tool_x + radius, tool_y + radius,
+                fill="blue", tag="tool_position"
+            )
+        except Exception as e:
+            print(f"Error updating tool position: {e}")
+
+        # Schedule the next update after 1 second
+        self.after(1000, self.update_tool_position)
 
     def load_new_bed(self):
         try:
@@ -228,6 +300,28 @@ class PrinterGUI(tk.Tk):
 
         messagebox.showinfo("Load Config", "New configuration loaded!")
 
+    def move_to_coordinates(self):
+        """
+        Move to specified coordinates based on user input.
+        """
+        try:
+            # Get values from input boxes
+            x = float(self.x_entry.get())
+            y = float(self.y_entry.get())
+            z = float(self.z_entry.get())
+
+            # Call the PrinterController function to move
+            self.printer_controller.move_to_coordinates(x, y, z)
+            messagebox.showinfo("Move to Coordinates", f"Moving to X: {x}, Y: {y}, Z: {z}")
+        except ValueError:
+            messagebox.showerror("Error", "Please enter valid numbers for X, Y, and Z.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+
+    def open_manual_movement(self):
+        # Create and display the manual movement window
+        manual_movement_window = ManualMovementWindow(self.printer_controller)
+        manual_movement_window.grab_set()  # Focus on the new window
 
     def stop_execution(self):
         messagebox.showwarning("Execution", "Execution stopped!")
@@ -239,5 +333,7 @@ class PrinterGUI(tk.Tk):
         messagebox.showinfo("Execution", "Run started!")
 
 if __name__ == "__main__":
-    app = PrinterGUI()
+    printer = PrinterController()
+    # printer.configure_serial_connection()
+    app = PrinterGUI(printer)
     app.mainloop()
