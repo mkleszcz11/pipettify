@@ -1,16 +1,21 @@
 import serial
 import time
 
+from pipettify.controllers.controller_tool import EndEffectorController
+from pipettify.controllers.controller_bed import BedController
 
 class PrinterController:
     """
     Class for controlling 3D printer. To controll the end effector, use end effector class.
     """
     def __init__(self):
+        self.bed_controller = BedController()
+        self.tool_controller = EndEffectorController(send_gcode_func = self.send_gcode,
+                                                     bed_controller = self.bed_controller)
         self.curr_x = None
         self.curr_y = None
         self.curr_z = None
-        self.max_speed = 500
+        self.max_speed = 10800
         self.serial = None
 
     def configure_serial_connection(self, port='/dev/ttyUSB0', baudrate=115200):
@@ -42,7 +47,7 @@ class PrinterController:
         try:
             # Send the M114 command
             self.serial.write(b'M114\n')
-            time.sleep(0.5)  # Wait for the printer to respond
+            #time.sleep(0.5)  # Wait for the printer to respond # TODO
 
             # Read the response
             response_lines = []
@@ -57,7 +62,7 @@ class PrinterController:
                         break
                 time.sleep(0.1)
 
-            # # Combine response for debugging
+            # Combine response for debugging
             # response = "\n".join(response_lines)
             # print(f"Full response:\n{response}")
 
@@ -68,11 +73,14 @@ class PrinterController:
                     self.curr_x = float(next((p[2:] for p in parts if p.startswith('X:')), 0))
                     self.curr_y = float(next((p[2:] for p in parts if p.startswith('Y:')), 0))
                     self.curr_z = float(next((p[2:] for p in parts if p.startswith('Z:')), 0))
-                    print(f"Updated Coordinates -> X: {self.curr_x}, Y: {self.curr_y}, Z: {self.curr_z}")
+                    self.curr_x = max(0.0, self.curr_x)  # Ensure coordinates are non-negative
+                    self.curr_y = max(0.0, self.curr_y)
+                    self.curr_z = max(0.0, self.curr_z)
+                    # print(f"Updated Coordinates -> X: {self.curr_x}, Y: {self.curr_y}, Z: {self.curr_z}")
                     return
 
             # If coordinates are not found
-            print("Failed to parse coordinates from the response.")
+            # print("Failed to parse coordinates from the response.")
         except Exception as e:
             print(f"Error while updating coordinates: {e}")
 
@@ -83,17 +91,28 @@ class PrinterController:
         self.update_current_coordinates()
         print(f"Current coordinates: {self.curr_x}, {self.curr_y}, {self.curr_z}")
 
-    def move_to_coordinates(self, x, y, z):
+    def move_to_coordinates(self, x, y, z, timeout=30, poll_interval=0.1):
         """
-        End effector moves to x,y,z.
+        Move to the specified coordinates and wait until the move is complete.
         """
         command = "M302 S0"
         self.send_gcode(command)
-        command = f"G1 X{x} Y{y} Z{z} F{self.max_speed}"  # G-code to move to specified X, Y, Z with a feed rate of 1500 mm/min
+        self.send_gcode(f"G1 X{x} Y{y} Z{z} F{self.max_speed}")
         self.send_gcode(command)
         
+        # start_time = time.time()
+        # while time.time() - start_time < timeout:
+        #     if self.is_at_position(x, y, z):
+        #         print(f"Reached position: X={x}, Y={y}, Z={z}")
+        #         return True
+        #     time.sleep(poll_interval)
+        
+        # print(f"Timeout while moving to position: X={x}, Y={y}, Z={z}")
+        # return False
+
     def move_relative(self, dx, dy, dz):
         """
+        ! -> For state machine use move_to_coordinates instead.
         Move the end effector by the specified amount in each axis.
         """
         command = "M302 S0"
@@ -110,8 +129,23 @@ class PrinterController:
         # Return to absolute positioning mode
         command = f"G90"
         self.send_gcode(command)
-        
-    
+
+    def move_above_refilling_tank(self): # TODO
+        print("Moving above refilling tank...")
+        self.move_to_coordinates(self.bed_controller.refilling_tank_x, self.bed_controller.refilling_tank_y, self.bed_controller.safe_z)
+        return True
+
+    def is_at_position(self, x, y, z, tolerance=0.1):
+        """
+        Check if the printer has reached the specified position within a given tolerance.
+        """
+        self.update_current_coordinates()  # Ensure current coordinates are up-to-date
+        return (
+            abs(self.curr_x - x) <= tolerance and
+            abs(self.curr_y - y) <= tolerance and
+            abs(self.curr_z - z) <= tolerance
+        )
+
     def home(self):
         """
         Home the printer.
@@ -121,7 +155,10 @@ class PrinterController:
         self.curr_x = 0.0
         self.curr_y = 0.0
         self.curr_z = 0.0
-        
+
+    ############################
+    # ADDITIONAL FUNCTIONALITY #
+    ############################
 
     def play_crazy_frog(self): # TODO - IMPLEMENT
         """
