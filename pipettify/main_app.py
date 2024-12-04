@@ -11,14 +11,16 @@ import time
 
 def main():
     printer = PrinterController()
-    # printer.configure_serial_connection()
+    printer.configure_serial_connection()
 
     bed_controller = printer.bed_controller
     
+    # print("KEK")
+    # printer.update_current_coordinates()
     # printer.tool_controller.press_push_button()
     
     
-    time.sleep(2)
+    # time.sleep(2)
     # printer.tool_controller._get_absolute_motor_position()
 
     state_machine = PipettifyStateMachine(printer_controller = printer,
