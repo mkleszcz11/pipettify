@@ -6,10 +6,12 @@ class EndEffectorController:
     """
     End effector controller class. This class is responsible for controlling the end effector.
     """
-    def __init__(self, send_gcode_func, bed_controller: BedController):
+    def __init__(self, send_gcode_func, update_current_coordinates, bed_controller: BedController):
         self.send_gcode = send_gcode_func
+        self.update_current_coordinates = update_current_coordinates
         self.bed_controller = bed_controller
-        self.neutral_position = self._get_absolute_motor_position()
+        self.neutral_position = 0.0
+        self.current_position = None
         self.state = "neutral"  # Track the end effector state (push_button_pressed, tip_button_pressed, neutral)
         self.last_operation = None  # Track the last operation performed ("drop_tip", "refill")
 
@@ -47,6 +49,7 @@ class EndEffectorController:
         """
         Perform refill operation. This means pressing push button and getting back to neutral.
         """
+        print("EXECUTE REFILL")
         if not self.press_push_button(timeout, poll_interval):
             print("Failed to press push button.")
             return False
@@ -57,24 +60,32 @@ class EndEffectorController:
             return False
 
         print("Refill operation completed.")
+        self.last_operation = "refill"
         return True
     
     def execute_dispense(self, probe, timeout=10, poll_interval=0.1): # TODO -> NO QA
         """
         Perform dispense operation. This means pressing push button and getting back to neutral.
         """
-        # if not self.press_push_button(timeout, poll_interval):
-        #     print("Failed to press push button.")
-        #     return False
+        print(f"EXECUTE DISPENSE on probe {probe}")
+    
+        # Press the push button to dispense
+        if not self.press_push_button(timeout, poll_interval):
+            print("Failed to press push button for dispensing.")
+            return False
         
-        # # Return to neutral after pressing push button
-        # if not self.move_to_neutral(timeout, poll_interval):
-        #     print("Failed to return to neutral after dispensing.")
-        #     return False
+        # Return to neutral after pressing push button
+        if not self.move_to_neutral(timeout, poll_interval):
+            print("Failed to return to neutral after dispensing.")
+            return False
 
+        # Update the probe state to filled
         self.bed_controller.update_probe_state(probe[0], probe[1], True)
-        print("Dispense operation completed.")
+
+        print(f"Dispense operation completed on probe {probe}.")
+        self.last_operation = "dispense"
         return True
+
 
     def move_to_neutral(self, timeout=10, poll_interval=0.1):
         """
@@ -88,9 +99,8 @@ class EndEffectorController:
         """
         print(f"Moving motor to position: {position} mm")
         self.send_gcode("M302 P1")  # Enable cold extrusion
-        self.send_gcode("G92 E0")  # Reset extruder position to 0
+        # self.send_gcode("G92 E0")  # Reset extruder position to 0
         self.send_gcode(f"G1 E{position} F500")  # Move extruder motor by 'position' (linear mm)
-        time.sleep(0.5)  # Simulate motor movement command sending
         return True
 
     def _move_and_wait(self, target_position, timeout=10, poll_interval=0.1):
@@ -112,13 +122,16 @@ class EndEffectorController:
         """
         Check if the motor has reached the specified target position within a given tolerance.
         """
-        current_position = self._get_absolute_motor_position()
-        return abs(current_position - target_position) <= tolerance
+        # current_position = self._get_absolute_motor_position()
+        self._get_absolute_motor_position()
+        print(f"Current position: {self.current_position} | Target position: {target_position} | diff: {abs(self.current_position - target_position)}")
+        return abs(self.current_position - target_position) <= tolerance
 
     def _calculate_button_press_position(self, button_type):
         """
         Calculate the target position for the specified button press type.
         """
+        print(f"Neutral position: {self.neutral_position}, type: {type(self.neutral_position)}")
         if button_type == "push":
             return self.neutral_position + 5  # Example: 5 mm for push button
         elif button_type == "drop_tip":
@@ -130,16 +143,33 @@ class EndEffectorController:
         """
         Get current motor position relative to the neutral position.
         """
-        current_position = self._get_absolute_motor_position()
-        return current_position - self.neutral_position
+        # current_position = self._get_absolute_motor_position()
+        return self.current_position - self.neutral_position
 
     def _get_absolute_motor_position(self):
         """
-        Get current absolute motor position.
-        Simulated example - Replace with real sensor data.
+        Get current absolute motor position by sending the M114 command
+        and parsing the response.
         """
-        # Simulated motor position (e.g., replace with actual sensor reading)
-        return 0.0
+        self.update_current_coordinates()
+        # try:
+        #     # Send M114 to query current positions
+        #     response = self.send_gcode("M114")
+        #     print(" //////// ")
+        #     print(response)
+        #     print(" //////// ")
+        #     # Parse the response to extract the extruder position (E)
+        #     if "E:" in response:
+        #         parts = response.split()
+        #         for part in parts:
+        #             if part.startswith("E:"):
+        #                 position = float(part[2:])  # Extract the numeric part
+        #                 print(f"Absolute motor position: {position} mm")
+        #                 return position
+
+        #     print(f"Failed to parse absolute motor position from response, response -> {response}")
+        # except Exception as e:
+        #     print(f"Error while getting absolute motor position: {e}")
 
     def get_position(self):
         """
@@ -152,3 +182,9 @@ class EndEffectorController:
             return "push_button_pressed"
         elif current_position < -1: # TODO
             return "tip_button_pressed"
+        
+    def calibrate_neutral_position(self):
+        """
+        Calibrate the neutral position of the end effector by moving to the current position.
+        """
+        self.neutral_position = 0.0

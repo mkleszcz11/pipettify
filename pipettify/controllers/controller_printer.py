@@ -11,6 +11,7 @@ class PrinterController:
     def __init__(self):
         self.bed_controller = BedController()
         self.tool_controller = EndEffectorController(send_gcode_func = self.send_gcode,
+                                                     update_current_coordinates=self.update_current_coordinates,
                                                      bed_controller = self.bed_controller)
         self.curr_x = None
         self.curr_y = None
@@ -68,15 +69,16 @@ class PrinterController:
 
             # Parse the coordinates from the response
             for line in response_lines:
-                if 'X:' in line and 'Y:' in line and 'Z:' in line:
+                if 'X:' in line and 'Y:' in line and 'Z:' in line and 'E:' in line:
                     parts = line.split(' ')
                     self.curr_x = float(next((p[2:] for p in parts if p.startswith('X:')), 0))
                     self.curr_y = float(next((p[2:] for p in parts if p.startswith('Y:')), 0))
                     self.curr_z = float(next((p[2:] for p in parts if p.startswith('Z:')), 0))
+                    self.tool_controller.current_position = float(next((p[2:] for p in parts if p.startswith('E:')), 0))
                     self.curr_x = max(0.0, self.curr_x)  # Ensure coordinates are non-negative
                     self.curr_y = max(0.0, self.curr_y)
                     self.curr_z = max(0.0, self.curr_z)
-                    # print(f"Updated Coordinates -> X: {self.curr_x}, Y: {self.curr_y}, Z: {self.curr_z}")
+                    print(f"Updated Coordinates -> X: {self.curr_x}, Y: {self.curr_y}, Z: {self.curr_z}, E: {self.tool_controller.current_position}")
                     return
 
             # If coordinates are not found

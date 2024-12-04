@@ -123,14 +123,14 @@ class PipettifyStateMachine(StateMachine):
         if not self.flags["refilling_refilled"]:
             print("Refilling...")
             ###
-            print("HERE REFILLING SHOULD BE IMPLEMENTED.")
-            self.flags["refilling_refilled"] = True
+            # print("HERE REFILLING SHOULD BE IMPLEMENTED.")
+            # self.flags["refilling_refilled"] = True
             ###
-            # self.pipette_controller.press_push_button()
+            self.pipette_controller.execute_refill()
             
-            # if self.pipette_controller.last_operation == "refill":
-            #     print("Refilling completed.")
-            #     self.flags["refilling_refilled"] = True
+            if self.pipette_controller.last_operation == "refill":
+                print("Refilling completed.")
+                self.flags["refilling_refilled"] = True
                 
             return False
         

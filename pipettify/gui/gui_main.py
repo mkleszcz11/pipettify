@@ -136,8 +136,11 @@ class PrinterGUI(tk.Tk):
         self.z_entry.grid(row=0, column=3)
         tk.Button(move_frame, text="Move to Coordinates", command=self.move_to_coordinates).grid(row=0, column=4)
 
-        # Home button
+        # Home XYZ button
         tk.Button(move_frame, text="Home", command=self.printer_controller.home).grid(row=0, column=5)
+
+        # HOME E button
+        tk.Button(move_frame, text="Home E", command=self.printer_controller.tool_controller.calibrate_neutral_position).grid(row=0, column=6)
 
         # Execution Controls
         controls_frame = tk.Frame(self)
