@@ -77,8 +77,8 @@ class PipettifyStateMachine(StateMachine):
         """
         # Condition to move to the next state
         if not self.flags["moving_to_refill_moved"]:
-            target_x = self.bed_controller.refilling_tank_x
-            target_y = self.bed_controller.refilling_tank_y
+            target_x = self.bed_controller.refilling_tank[0]
+            target_y = self.bed_controller.refilling_tank[1]
             safe_z = self.bed_controller.safe_z
 
             self.printer_controller.move_to_coordinates(target_x, target_y, safe_z)
@@ -107,13 +107,13 @@ class PipettifyStateMachine(StateMachine):
         if not self.flags["refilling_moved_down"]:
             print("Moving down to refill.")
             self.printer_controller.move_to_coordinates(
-                self.bed_controller.refilling_tank_x,
-                self.bed_controller.refilling_tank_y,
+                self.bed_controller.refilling_tank[0],
+                self.bed_controller.refilling_tank[1],
                 self.bed_controller.refilling_tank_z
             )
             
-            if self.printer_controller.is_at_position(self.bed_controller.refilling_tank_x,
-                                                      self.bed_controller.refilling_tank_y,
+            if self.printer_controller.is_at_position(self.bed_controller.refilling_tank[0],
+                                                      self.bed_controller.refilling_tank[1],
                                                       self.bed_controller.refilling_tank_z):
                 print("Printer moved to refill position.")
                 self.flags["refilling_moved_down"] = True
@@ -142,13 +142,13 @@ class PipettifyStateMachine(StateMachine):
         if not self.flags["refilling_moved_up"]:
             print("Moving up after refilling.")
             self.printer_controller.move_to_coordinates(
-                self.bed_controller.refilling_tank_x,
-                self.bed_controller.refilling_tank_y,
+                self.bed_controller.refilling_tank[0],
+                self.bed_controller.refilling_tank[1],
                 self.bed_controller.safe_z
             )
             
-            if self.printer_controller.is_at_position(self.bed_controller.refilling_tank_x,
-                                                      self.bed_controller.refilling_tank_y,
+            if self.printer_controller.is_at_position(self.bed_controller.refilling_tank[0],
+                                                      self.bed_controller.refilling_tank[1],
                                                       self.bed_controller.safe_z):
                 print("Printer moved to safe position.")
                 self.flags["refilling_moved_up"] = True

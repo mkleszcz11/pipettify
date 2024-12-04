@@ -46,6 +46,8 @@ class PrinterController:
         and parsing the response.
         """
         try:
+            self.serial.flushInput()
+            self.serial.flushOutput()
             # Send the M114 command
             self.serial.write(b'M114\n')
             #time.sleep(0.5)  # Wait for the printer to respond # TODO
@@ -64,8 +66,9 @@ class PrinterController:
                 time.sleep(0.1)
 
             # Combine response for debugging
-            # response = "\n".join(response_lines)
-            # print(f"Full response:\n{response}")
+            response = "\n".join(response_lines)
+            print(f"Full response -> {response}")
+            print("-----")
 
             # Parse the coordinates from the response
             for line in response_lines:
@@ -78,7 +81,7 @@ class PrinterController:
                     self.curr_x = max(0.0, self.curr_x)  # Ensure coordinates are non-negative
                     self.curr_y = max(0.0, self.curr_y)
                     self.curr_z = max(0.0, self.curr_z)
-                    print(f"Updated Coordinates -> X: {self.curr_x}, Y: {self.curr_y}, Z: {self.curr_z}, E: {self.tool_controller.current_position}")
+                    # print(f"Updated Coordinates -> X: {self.curr_x}, Y: {self.curr_y}, Z: {self.curr_z}, E: {self.tool_controller.current_position}")
                     return
 
             # If coordinates are not found
@@ -86,55 +89,48 @@ class PrinterController:
         except Exception as e:
             print(f"Error while updating coordinates: {e}")
 
-    def print_current_coordinates(self):
-        """
-        Print current 3D printer coordinates.
-        """
-        self.update_current_coordinates()
-        print(f"Current coordinates: {self.curr_x}, {self.curr_y}, {self.curr_z}")
-
     def move_to_coordinates(self, x, y, z, timeout=30, poll_interval=0.1):
         """
         Move to the specified coordinates and wait until the move is complete.
         """
+        
+        if x < 0 or \
+           y < 0 or \
+           x > 310 or \
+           y > 310:
+            print(f"Invalid coordinates: X={x}, Y={y}, Z={z}")
+            return
+
         command = "M302 S0"
         self.send_gcode(command)
         self.send_gcode(f"G1 X{x} Y{y} Z{z} F{self.max_speed}")
         self.send_gcode(command)
         
-        # start_time = time.time()
-        # while time.time() - start_time < timeout:
-        #     if self.is_at_position(x, y, z):
-        #         print(f"Reached position: X={x}, Y={y}, Z={z}")
-        #         return True
-        #     time.sleep(poll_interval)
-        
-        # print(f"Timeout while moving to position: X={x}, Y={y}, Z={z}")
-        # return False
+        self.update_current_coordinates()
 
-    def move_relative(self, dx, dy, dz):
-        """
-        ! -> For state machine use move_to_coordinates instead.
-        Move the end effector by the specified amount in each axis.
-        """
-        command = "M302 S0"
-        self.send_gcode(command)  # Allow movement without extruder temperature restrictions
+    # def move_relative(self, dx, dy, dz):
+    #     """
+    #     ! -> For state machine use move_to_coordinates instead.
+    #     Move the end effector by the specified amount in each axis.
+    #     """
+    #     command = "M302 S0"
+    #     self.send_gcode(command)  # Allow movement without extruder temperature restrictions
 
-        # Enable relative positioning mode
-        command = f"G91"
-        self.send_gcode(command)
+    #     # Enable relative positioning mode
+    #     command = f"G91"
+    #     self.send_gcode(command)
 
-        # Move by the specified relative distances
-        command = f"G1 X{dx} Y{dy} Z{dz} F{self.max_speed}"
-        self.send_gcode(command)
+    #     # Move by the specified relative distances
+    #     command = f"G1 X{dx} Y{dy} Z{dz} F{self.max_speed}"
+    #     self.send_gcode(command)
 
-        # Return to absolute positioning mode
-        command = f"G90"
-        self.send_gcode(command)
+    #     # Return to absolute positioning mode
+    #     command = f"G90"
+    #     self.send_gcode(command)
 
     def move_above_refilling_tank(self): # TODO
         print("Moving above refilling tank...")
-        self.move_to_coordinates(self.bed_controller.refilling_tank_x, self.bed_controller.refilling_tank_y, self.bed_controller.safe_z)
+        self.move_to_coordinates(self.bed_controller.refilling_tank[0], self.bed_controller.refilling_tank[1], self.bed_controller.safe_z)
         return True
 
     def is_at_position(self, x, y, z, tolerance=0.1):
