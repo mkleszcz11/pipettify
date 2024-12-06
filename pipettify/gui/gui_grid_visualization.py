@@ -2,8 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 
 class GuiGridVisualization:
-    def __init__(self, canvas, probe_grid, printer_controller):
-        self.probe_grid = probe_grid
+    def __init__(self, canvas, bed_controller, printer_controller):
+        self.bed_controller = bed_controller
         self.bed_canvas = canvas
         self.canvas_size = 400
         self.margin = 30 # Space around the bed
@@ -62,14 +62,17 @@ class GuiGridVisualization:
                 self.bed_canvas.create_line(x0, self.invert_y(y), x1, self.invert_y(y), fill="gray", dash=(2, 2), tag="grid_line")
                 self.bed_canvas.create_text(x0 - 5, self.invert_y(y), text=str(i), fill="blue", tag="scale_text", anchor="e")
 
-    def draw_probe_grid(self):
+    def draw_grid(self, grid, rows, columns, outline_color, tag, taken_key):
         """
-        Draw the probe grid based on the ProbeGrid instance with an inverted Y-axis.
+        Draw the probes or tips grid with an inverted Y-axis.
         """
-        self.bed_canvas.delete("probe")
-        rows = self.probe_grid.rows
-        columns = self.probe_grid.columns
-        probe_diameter = self.probe_grid.probe_diameter
+        # print("WOLOLOLOLO")
+        # print(grid)
+        self.bed_canvas.delete(tag)
+        # rows = self.bed_controller.probes_rows
+        # columns = self.bed_controller.probes_columns
+
+        outline_diameter = 8  # Diameter of the probe outline
 
         max_width = self.canvas_size - 2 * self.margin
         max_height = self.canvas_size - 2 * self.margin
@@ -77,25 +80,28 @@ class GuiGridVisualization:
         x0 = (self.canvas_size - max_width) / 2
         y0 = (self.canvas_size - max_height) / 2
 
-        # Draw probes with inverted Y
+        # print(f"x0 type: {type(x0)}")
+        
+        # Draw probes with inverted Y        
         for row in range(rows):
             for col in range(columns):
-                if (row, col) in self.probe_grid.probes:
-                    probe_x = x0 + (self.probe_grid.probes[(row, col)]["coordinates"][0]) * scale
-                    probe_y = y0 + (self.probe_grid.probes[(row, col)]["coordinates"][1]) * scale
-                    filled = self.probe_grid.probes[(row, col)]["filled"]
+                if (row, col) in grid:
+                    probe_x = x0 + (grid[(row, col)]["coordinates"][0]) * scale
+                    probe_y = y0 + (grid[(row, col)]["coordinates"][1]) * scale
+                    filled = grid[(row, col)][taken_key]
                     color = "red" if filled else "white"
                     self.bed_canvas.create_oval(
-                        probe_x - probe_diameter * scale / 2,
-                        self.invert_y(probe_y + probe_diameter * scale / 2),
-                        probe_x + probe_diameter * scale / 2,
-                        self.invert_y(probe_y - probe_diameter * scale / 2),
-                        outline="black",
+                        probe_x - outline_diameter * scale / 2,
+                        self.invert_y(probe_y + outline_diameter * scale / 2),
+                        probe_x + outline_diameter * scale / 2,
+                        self.invert_y(probe_y - outline_diameter * scale / 2),
+                        outline=outline_color,
                         fill=color,
                         width=2,
-                        tag="probe",
+                        tag=tag,
                     )
-                
+
+
     def draw_tool_position(self):
         """
         Draw the tool position on the bed canvas with an inverted Y-axis.
@@ -129,3 +135,85 @@ class GuiGridVisualization:
             )
         except Exception as e:
             print(f"Error updating tool position: {e}")
+            
+    
+    def draw_tank_position(self):
+        """
+        Draw the tank position on the bed canvas with an inverted Y-axis.
+        """
+        try:
+            x_mm = self.bed_controller.refilling_tank[0]
+            y_mm = self.bed_controller.refilling_tank[1]
+
+            # Scale the coordinates to fit the canvas
+            max_width = self.canvas_size - 2 * self.margin
+            max_height = self.canvas_size - 2 * self.margin
+            scale = min(max_width / self.bed_width, max_height / self.bed_height)
+            bed_outline_width = self.bed_width * scale
+            bed_outline_height = self.bed_height * scale
+            x0 = (self.canvas_size - bed_outline_width) / 2
+            y0 = (self.canvas_size - bed_outline_height) / 2
+
+            # Convert tank position to canvas coordinates with inverted Y
+            tank_x = x0 + x_mm * scale
+            tank_y = y0 + y_mm * scale
+
+            # Clear the previous tank position
+            self.bed_canvas.delete("tank_position")
+
+            # Draw a new tank position (as a green circle)
+            radius = 20  # Radius of the tank indicator
+            self.bed_canvas.create_oval(
+                tank_x - radius, self.invert_y(tank_y) - radius,
+                tank_x + radius, self.invert_y(tank_y) + radius,
+                fill="green", tag="tank_position"
+            )
+            
+            # Add text to the tank position "Refilling Tank"
+            self.bed_canvas.create_text(
+                tank_x, self.invert_y(tank_y) - 30,
+                text="Refilling Tank", fill="green", tag="tank_position"
+            )
+        except Exception as e:
+            print(f"Error updating tank position: {e}")
+            
+            
+    def draw_disposal_tank_position(self):
+        """
+        Draw the disposal tank position on the bed canvas with an inverted Y-axis.
+        """
+        try:
+            x_mm = self.bed_controller.disposal_tank[0]
+            y_mm = self.bed_controller.disposal_tank[1]
+
+            # Scale the coordinates to fit the canvas
+            max_width = self.canvas_size - 2 * self.margin
+            max_height = self.canvas_size - 2 * self.margin
+            scale = min(max_width / self.bed_width, max_height / self.bed_height)
+            bed_outline_width = self.bed_width * scale
+            bed_outline_height = self.bed_height * scale
+            x0 = (self.canvas_size - bed_outline_width) / 2
+            y0 = (self.canvas_size - bed_outline_height) / 2
+
+            # Convert tank position to canvas coordinates with inverted Y
+            tank_x = x0 + x_mm * scale
+            tank_y = y0 + y_mm * scale
+
+            # Clear the previous tank position
+            self.bed_canvas.delete("disposal_tank_position")
+
+            # Draw a new tank position (as a red circle)
+            radius = 20  # Radius of the tank indicator
+            self.bed_canvas.create_oval(
+                tank_x - radius, self.invert_y(tank_y) - radius,
+                tank_x + radius, self.invert_y(tank_y) + radius,
+                fill="red", tag="disposal_tank_position"
+            )
+            
+            # Add text to the tank position "Disposal Tank"
+            self.bed_canvas.create_text(
+                tank_x, self.invert_y(tank_y) - 30,
+                text="Disposal Tank", fill="red", tag="disposal_tank_position"
+            )
+        except Exception as e:
+            print(f"Error updating disposal tank position: {e}")

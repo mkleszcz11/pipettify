@@ -20,7 +20,10 @@ class EndEffectorController:
         Press push button. It should keep the button pressed.
         """
         target_position = self._calculate_button_press_position("push")
-        return self._move_and_wait(target_position, timeout, poll_interval)
+        result = self._move_and_wait(target_position, timeout, poll_interval)
+        if result:
+            self.state = "push_button_pressed"
+        return result
 
     def press_drop_tip_button(self, timeout=10, poll_interval=0.1):
         """
@@ -91,7 +94,10 @@ class EndEffectorController:
         """
         No matter the motor position, move back to neutral. Choose the correct movement direction.
         """
-        return self._move_and_wait(self.neutral_position, timeout, poll_interval)
+        result = self._move_and_wait(self.neutral_position, timeout, poll_interval)
+        if result:
+            self.state = "neutral"
+        return result
 
     def _move_to_position(self, position):
         """
