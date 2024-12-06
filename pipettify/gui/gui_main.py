@@ -5,6 +5,7 @@ from pipettify.controllers.controller_printer import PrinterController
 from pipettify.controllers.controller_bed import BedController
 from pipettify.gui.gui_manual_movement import ManualMovementWindow
 from pipettify.gui.gui_grid_visualization import GuiGridVisualization
+from pipettify.gui.gui_import_export_config import ConfigImportExport
 
 from functools import partial
 
@@ -12,6 +13,7 @@ class PrinterGUI(tk.Tk):
     def __init__(self, printer_controller, bed_controller, state_machine):
         super().__init__()
         self.title("Pipettify app")
+        self.gui_import_export = ConfigImportExport(interface = self)
         
         self.state_machine = state_machine # Used only when user starts program
         self.printer_controller = printer_controller
@@ -19,7 +21,7 @@ class PrinterGUI(tk.Tk):
         
         # State machine variables
         self.stop_flag = threading.Event()
-        self.state_machine_polling_interval = 100  # Poll every 100ms
+        self.state_machine_polling_interval = 300  # Poll every 100ms
 
         # Add "Manual Movement" button
         tk.Button(self, text="Manual Movement", command=self.open_manual_movement).pack(pady=10)
@@ -38,12 +40,12 @@ class PrinterGUI(tk.Tk):
 
         # Left Panel (3D Printer Bed View and Calibration Fields)
         left_panel = tk.Frame(self)
-        left_panel.pack(side="left", padx=10, pady=10)
+        left_panel.pack(side="left", padx=10, pady=10)  
 
         # 3D Printer Bed View
         self.bed_canvas = tk.Canvas(left_panel, width=self.canvas_size, height=self.canvas_size, bg="white")
         self.bed_canvas.pack()
-        self.gui_grid_visualization = GuiGridVisualization(canvas=self.bed_canvas, probe_grid=self.bed_controller, printer_controller=self.printer_controller)
+        self.gui_grid_visualization = GuiGridVisualization(canvas=self.bed_canvas, bed_controller=self.bed_controller, printer_controller=self.printer_controller)
         # self.gui_grid_visualization.draw_bed_grid()
 
         # Bed Dimension Calibration
@@ -70,85 +72,160 @@ class PrinterGUI(tk.Tk):
         # Align everything to the left
         right_panel.grid_columnconfigure(0, weight=1)
 
-        # Probe Slot Grid Configuration
-        grid_config_frame = tk.Frame(right_panel)
-        grid_config_frame.pack(anchor="w", pady=5)
-
-        tk.Label(grid_config_frame, text="Probe Slot Grid Configuration").grid(row=0, column=0, columnspan=3, sticky="w")
-        tk.Label(grid_config_frame, text="Rows:").grid(row=1, column=0, sticky="w")
-        self.rows_entry = tk.Entry(grid_config_frame, width=5)
-        self.rows_entry.grid(row=1, column=1, sticky="w")
-        tk.Label(grid_config_frame, text="Columns:").grid(row=1, column=2, sticky="w")
-        self.columns_entry = tk.Entry(grid_config_frame, width=5)
-        self.columns_entry.grid(row=1, column=3, sticky="w")
-
         # Probe Slot Position Calibration (Grid placement and probes height)
         slot_pos_frame = tk.Frame(right_panel)
         slot_pos_frame.pack(anchor="w", pady=5)
 
-        tk.Label(slot_pos_frame, text="Closest slot (X, Y):").grid(row=0, column=0, sticky="w")
-        self.tl_x_entry = tk.Entry(slot_pos_frame, width=5)
-        self.tl_x_entry.grid(row=0, column=1)
-        self.tl_y_entry = tk.Entry(slot_pos_frame, width=5)
-        self.tl_y_entry.grid(row=0, column=2)
-        tk.Button(slot_pos_frame, text="Calibrate", command=partial(self.calibrate_slot, "top-left")).grid(row=0, column=3)
+        # Add frame title
+        slot_pos_frame_title = tk.Label(slot_pos_frame, text="Grid Settings", font=("Arial", 12, "bold"))
+        slot_pos_frame_title.grid(row=0, column=0, columnspan=9, sticky="w")
+        slot_pos_frame.grid_columnconfigure(0, weight=1)
+
+        # Define padding
+        slot_pos_frame_padding_x = 20  # Padding between columns for separation
+
+        # Add configuration labels for Probes, Tips, and Tanks
+        tk.Label(slot_pos_frame, text="Probes Config", font=("Arial", 10, "bold")).grid(row=1, column=1, columnspan=4, sticky="w")
+        tk.Label(slot_pos_frame, text="Tips Config", font=("Arial", 10, "bold")).grid(row=1, column=4, columnspan=3, sticky="w", padx=(slot_pos_frame_padding_x, 0))
+        tk.Label(slot_pos_frame, text="Tank Config", font=("Arial", 10, "bold")).grid(row=1, column=7, columnspan=3, sticky="w", padx=(slot_pos_frame_padding_x, 0))
+
+        # Add grid configuration fields for Probes
+        tk.Label(slot_pos_frame, text="Rows, Col. :").grid(row=2, column=0, sticky="w")
+        self.probes_rows_entry = tk.Entry(slot_pos_frame, width=5)
+        self.probes_rows_entry.grid(row=2, column=1)
+        self.probes_columns_entry = tk.Entry(slot_pos_frame, width=5)
+        self.probes_columns_entry.grid(row=2, column=2)
+
+        # Add grid configuration fields for Tips
+        self.tips_rows_entry = tk.Entry(slot_pos_frame, width=5)
+        self.tips_rows_entry.grid(row=2, column=4, padx=(slot_pos_frame_padding_x, 0))
+        self.tips_columns_entry = tk.Entry(slot_pos_frame, width=5)
+        self.tips_columns_entry.grid(row=2, column=5)
+
+        ##############################
+        # Probes corners calibration
+        ##############################
+        tk.Label(slot_pos_frame, text="Bottom-Left:").grid(row=3, column=0, sticky="w")
+        self.probe_tl_x_entry = tk.Entry(slot_pos_frame, width=5)
+        self.probe_tl_x_entry.grid(row=3, column=1)
+        self.probe_tl_y_entry = tk.Entry(slot_pos_frame, width=5)
+        self.probe_tl_y_entry.grid(row=3, column=2)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "probe-top-left")).grid(row=3, column=3)
+
+        tk.Label(slot_pos_frame, text="Bottom-Right:").grid(row=4, column=0, sticky="w")
+        self.probe_tr_x_entry = tk.Entry(slot_pos_frame, width=5)
+        self.probe_tr_x_entry.grid(row=4, column=1)
+        self.probe_tr_y_entry = tk.Entry(slot_pos_frame, width=5)
+        self.probe_tr_y_entry.grid(row=4, column=2)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "probe-top-right")).grid(row=4, column=3)
+
+        tk.Label(slot_pos_frame, text="Top-Left:").grid(row=5, column=0, sticky="w")
+        self.probe_bl_x_entry = tk.Entry(slot_pos_frame, width=5)
+        self.probe_bl_x_entry.grid(row=5, column=1)
+        self.probe_bl_y_entry = tk.Entry(slot_pos_frame, width=5)
+        self.probe_bl_y_entry.grid(row=5, column=2)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "probe-bottom-left")).grid(row=5, column=3)
+
+        tk.Label(slot_pos_frame, text="Top-Right:").grid(row=6, column=0, sticky="w")
+        self.probe_br_x_entry = tk.Entry(slot_pos_frame, width=5)
+        self.probe_br_x_entry.grid(row=6, column=1)
+        self.probe_br_y_entry = tk.Entry(slot_pos_frame, width=5)
+        self.probe_br_y_entry.grid(row=6, column=2)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "probe-bottom-right")).grid(row=6, column=3)
+
+        ##############################
+        # Tips corners calibration
+        ##############################
+        self.tip_tl_x_entry = tk.Entry(slot_pos_frame, width=5)
+        self.tip_tl_x_entry.grid(row=3, column=4, padx=(slot_pos_frame_padding_x, 0))
+        self.tip_tl_y_entry = tk.Entry(slot_pos_frame, width=5)
+        self.tip_tl_y_entry.grid(row=3, column=5)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "tip-top-left")).grid(row=3, column=6)
+
+        self.tip_tr_x_entry = tk.Entry(slot_pos_frame, width=5)
+        self.tip_tr_x_entry.grid(row=4, column=4, padx=(slot_pos_frame_padding_x, 0))
+        self.tip_tr_y_entry = tk.Entry(slot_pos_frame, width=5)
+        self.tip_tr_y_entry.grid(row=4, column=5)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "tip-top-right")).grid(row=4, column=6)
+
+        self.tip_bl_x_entry = tk.Entry(slot_pos_frame, width=5)
+        self.tip_bl_x_entry.grid(row=5, column=4, padx=(slot_pos_frame_padding_x, 0))
+        self.tip_bl_y_entry = tk.Entry(slot_pos_frame, width=5)
+        self.tip_bl_y_entry.grid(row=5, column=5)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "tip-bottom-left")).grid(row=5, column=6)
+
+        self.tip_br_x_entry = tk.Entry(slot_pos_frame, width=5)
+        self.tip_br_x_entry.grid(row=6, column=4, padx=(slot_pos_frame_padding_x, 0))
+        self.tip_br_y_entry = tk.Entry(slot_pos_frame, width=5)
+        self.tip_br_y_entry.grid(row=6, column=5)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "tip-bottom-right")).grid(row=6, column=6)
+
+        ##############################
+        # Tank calibration
+        ##############################
+        tk.Label(slot_pos_frame, text="Refilling:").grid(row=2, column=7, sticky="w", padx=(slot_pos_frame_padding_x, 0))
+        self.refilling_tank_x_entry = tk.Entry(slot_pos_frame, width=5)
+        self.refilling_tank_x_entry.grid(row=2, column=8)
+        self.refilling_tank_y_entry = tk.Entry(slot_pos_frame, width=5)
+        self.refilling_tank_y_entry.grid(row=2, column=9)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "tank")).grid(row=2, column=10)
+
+        tk.Label(slot_pos_frame, text="Disposal:").grid(row=3, column=7, sticky="w", padx=(slot_pos_frame_padding_x, 0))
+        self.disposal_tank_x_entry = tk.Entry(slot_pos_frame, width=5)
+        self.disposal_tank_x_entry.grid(row=3, column=8)
+        self.disposal_tank_y_entry = tk.Entry(slot_pos_frame, width=5)
+        self.disposal_tank_y_entry.grid(row=3, column=9)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "tank")).grid(row=3, column=10)
+
+        ##############################
+        # Active slots calibration
+        ##############################
+        tk.Label(slot_pos_frame, text="Active Slots:").grid(row=7, column=0, sticky="w")
+        self.active_probe_slots_entry = tk.Entry(slot_pos_frame, width=5)
+        self.active_probe_slots_entry.grid(row=7, column=1)
+        self.active_tip_slots_entry = tk.Entry(slot_pos_frame, width=5, )
+        self.active_tip_slots_entry.grid(row=7, column=4, padx=(slot_pos_frame_padding_x, 0))
+
+        ##############################
+        # Z height calibration
+        ##############################
+        z_height_frame = tk.Frame(right_panel)
+        z_height_frame.pack(anchor="w", pady=5)
+        z_height_frame.grid_columnconfigure(1, weight=1)
         
-        tk.Label(slot_pos_frame, text="Furthest X slot (X, Y)").grid(row=1, column=0, sticky="w")
-        self.tr_x_entry = tk.Entry(slot_pos_frame, width=5)
-        self.tr_x_entry.grid(row=1, column=1)
-        self.tr_y_entry = tk.Entry(slot_pos_frame, width=5)
-        self.tr_y_entry.grid(row=1, column=2)
-        tk.Button(slot_pos_frame, text="Calibrate", command=partial(self.calibrate_slot, "top-right")).grid(row=1, column=3)
+        # Add frame title to show the user what the frame is for, make it bold
+        z_height_frame_title = tk.Label(z_height_frame, text="Z Height Settings", font=("Arial", 12, "bold"))
+        z_height_frame_title.pack()
+        z_height_frame_title.grid(row=0, column=0, columnspan=2, sticky="w")
 
-        tk.Label(slot_pos_frame, text="Furthest Y slot (X, Y)").grid(row=2, column=0, sticky="w")
-        self.bl_x_entry = tk.Entry(slot_pos_frame, width=5)
-        self.bl_x_entry.grid(row=2, column=1)
-        self.bl_y_entry = tk.Entry(slot_pos_frame, width=5)
-        self.bl_y_entry.grid(row=2, column=2)
-        tk.Button(slot_pos_frame, text="Calibrate", command=partial(self.calibrate_slot, "bottom-left")).grid(row=2, column=3)
-
-        tk.Label(slot_pos_frame, text="Furthest slot (X, Y)").grid(row=3, column=0, sticky="w")
-        self.br_x_entry = tk.Entry(slot_pos_frame, width=5)
-        self.br_x_entry.grid(row=3, column=1)
-        self.br_y_entry = tk.Entry(slot_pos_frame, width=5)
-        self.br_y_entry.grid(row=3, column=2)
-        tk.Button(slot_pos_frame, text="Calibrate", command=partial(self.calibrate_slot, "bottom-right")).grid(row=3, column=3)
+        tk.Label(z_height_frame, text="XY movement:").grid(row=1, column=0, sticky="w")
+        self.safe_z_height_entry = tk.Entry(z_height_frame, width=5)
+        self.safe_z_height_entry.grid(row=1, column=1)
+        tk.Button(z_height_frame, text="set", command=partial(self.calibrate_slot, "safe_z")).grid(row=1, column=3, sticky="e")
         
-        tk.Label(slot_pos_frame, text="Tank position (X, Y):").grid(row=4, column=0, sticky="w")
-        self.tank_x_entry = tk.Entry(slot_pos_frame, width=5)
-        self.tank_x_entry.grid(row=4, column=1)
-        self.tank_y_entry = tk.Entry(slot_pos_frame, width=5)
-        self.tank_y_entry.grid(row=4, column=2)
-        tk.Button(slot_pos_frame, text="Calibrate", command=partial(self.calibrate_slot, "tank")).grid(row=4, column=3)
+        tk.Label(z_height_frame, text="Refilling:").grid(row=2, column=0, sticky="w")
+        self.refilling_height_entry = tk.Entry(z_height_frame, width=5)
+        self.refilling_height_entry.grid(row=2, column=1)
+        tk.Button(z_height_frame, text="set", command=partial(self.calibrate_slot, "refilling_z")).grid(row=2, column=3, sticky="e")
 
-        tk.Label(slot_pos_frame, text="Z height for XY movement:").grid(row=5, column=0, sticky="w")
-        self.top_height_entry = tk.Entry(slot_pos_frame, width=5)
-        self.top_height_entry.grid(row=5, column=1)
-        tk.Button(slot_pos_frame, text="Calibrate", command=self.calibrate_top_height).grid(row=5, column=3, sticky="e")
-
-        # Probe Diameter and Active Slots
-        probe_diameter_frame = tk.Frame(right_panel)
-        probe_diameter_frame.pack(anchor="w", pady=5)
-        tk.Label(probe_diameter_frame, text="Probe Diameter (mm):").grid(row=0, column=0, sticky="w")
-        self.diameter_entry = tk.Entry(probe_diameter_frame, width=8)
-        self.diameter_entry.grid(row=0, column=1)
-
-        active_slots_frame = tk.Frame(right_panel)
-        active_slots_frame.pack(anchor="w", pady=5)
-        tk.Label(active_slots_frame, text="Number of Active Probe Slots:").grid(row=0, column=0, sticky="w")
-        self.active_slots_entry = tk.Entry(active_slots_frame, width=8)
-        self.active_slots_entry.grid(row=0, column=1)
-
-        # Configuration Load Buttons
-        config_button_frame = tk.Frame(right_panel)
-        config_button_frame.pack(anchor="w", pady=5)
-
-        tk.Button(config_button_frame, text="Load Existing Configuration", command=self.load_existing_config).grid(row=0, column=0)
-        tk.Button(config_button_frame, text="Load New Configuration", command=self.load_new_config).grid(row=0, column=1)
+        tk.Label(z_height_frame, text="Dispensing:").grid(row=3, column=0, sticky="w")
+        self.dispensing_height_entry = tk.Entry(z_height_frame, width=5)
+        self.dispensing_height_entry.grid(row=3, column=1)
+        tk.Button(z_height_frame, text="set", command=partial(self.calibrate_slot, "dispensing_z")).grid(row=3, column=3, sticky="e")
+        
+        tk.Label(z_height_frame, text="Change tip:").grid(row=4, column=0, sticky="w")
+        self.change_tip_height_entry = tk.Entry(z_height_frame, width=5)
+        self.change_tip_height_entry.grid(row=4, column=1)
+        tk.Button(z_height_frame, text="set", command=partial(self.calibrate_slot, "change_tip_z")).grid(row=4, column=3, sticky="e")
+        
+        tk.Label(z_height_frame, text="Drop tip:").grid(row=5, column=0, sticky="w")
+        self.drop_tip_height_entry = tk.Entry(z_height_frame, width=5)
+        self.drop_tip_height_entry.grid(row=5, column=1)
+        tk.Button(z_height_frame, text="set", command=partial(self.calibrate_slot, "drop_tip_z")).grid(row=5, column=3, sticky="e")
 
         # Move to Coordinates Section
         move_frame = tk.Frame(right_panel)
-        move_frame.pack(pady=5)
+        move_frame.pack(anchor="w", pady=5)
 
         tk.Label(move_frame, text="Move to (X,Y,Z):").grid(row=0, column=0, sticky="w")
         self.x_entry = tk.Entry(move_frame, width=5)
@@ -158,6 +235,14 @@ class PrinterGUI(tk.Tk):
         self.z_entry = tk.Entry(move_frame, width=5)
         self.z_entry.grid(row=0, column=3)
         tk.Button(move_frame, text="Move to Coordinates", command=self.move_to_coordinates).grid(row=0, column=4)
+
+        # Configuration Load Buttons
+        config_button_frame = tk.Frame(right_panel)
+        config_button_frame.pack(anchor="w", pady=5)
+
+        tk.Button(config_button_frame, text="Import Configuration", command=self.gui_import_export.import_config).grid(row=0, column=0)
+        tk.Button(config_button_frame, text="Export Configuration", command=self.gui_import_export.export_config).grid(row=0, column=1)
+        tk.Button(config_button_frame, text="Load Configuration", command=self.load_new_config).grid(row=0, column=2)
 
         # Home XYZ button
         tk.Button(move_frame, text="Home", command=self.printer_controller.home).grid(row=0, column=5)
@@ -177,22 +262,44 @@ class PrinterGUI(tk.Tk):
         self.run_button = tk.Button(controls_frame, text="Run", fg="green", command=self.run_state_machine_execution)
         self.run_button.pack(side="left", padx=5)
 
-        self.rows_entry.insert(0, 5)
-        self.columns_entry.insert(0, 10)
-        # self.tl_x_entry.insert(0, 42)
-        # self.tl_y_entry.insert(0, 10)
-        # self.tr_x_entry.insert(0, 250)
-        # self.tr_y_entry.insert(0, 10)
-        # self.bl_x_entry.insert(0, 42)
-        # self.bl_y_entry.insert(0, 150)
-        # self.br_x_entry.insert(0, 250)
-        # self.br_y_entry.insert(0, 150)
-        # self.tank_x_entry.insert(0, 250)
-        # self.tank_y_entry.insert(0, 250)
-        self.top_height_entry.insert(0, 150)
-        self.diameter_entry.insert(0, 5)
-        self.active_slots_entry.insert(0, 49)
+        self.probes_rows_entry.insert(0, 5)
+        self.probes_columns_entry.insert(0, 5)
+
+        self.probe_tl_x_entry.insert(0, 42)
+        self.probe_tl_y_entry.insert(0, 10)
+        self.probe_tr_x_entry.insert(0, 250)
+        self.probe_tr_y_entry.insert(0, 10)
+        self.probe_bl_x_entry.insert(0, 42)
+        self.probe_bl_y_entry.insert(0, 150)
+        self.probe_br_x_entry.insert(0, 250)
+        self.probe_br_y_entry.insert(0, 150)
+
+        self.tips_rows_entry.insert(0, 5)
+        self.tips_columns_entry.insert(0, 5)
+
+        self.tip_tl_x_entry.insert(0, 200)
+        self.tip_tl_y_entry.insert(0, 200)
+        self.tip_tr_x_entry.insert(0, 280)
+        self.tip_tr_y_entry.insert(0, 200)
+        self.tip_bl_x_entry.insert(0, 200)
+        self.tip_bl_y_entry.insert(0, 280)
+        self.tip_br_x_entry.insert(0, 280)
+        self.tip_br_y_entry.insert(0, 280)
         
+        self.active_probe_slots_entry.insert(0, 25)
+        self.active_tip_slots_entry.insert(0, 25)
+
+        self.refilling_tank_x_entry.insert(0, 120)
+        self.refilling_tank_y_entry.insert(0, 250)
+        self.disposal_tank_x_entry.insert(0, 40)
+        self.disposal_tank_y_entry.insert(0, 250)
+
+        self.safe_z_height_entry.insert(0, 50)
+        self.dispensing_height_entry.insert(0, 40)
+        self.change_tip_height_entry.insert(0, 40)
+        self.drop_tip_height_entry.insert(0, 40)
+        self.refilling_height_entry.insert(0, 40)
+
         self.refresh_display()
         self.refresh_tool_position()
         self.start_state_machine_polling()
@@ -207,34 +314,72 @@ class PrinterGUI(tk.Tk):
         """
         Update ProbeGrid.
         """
+        print("LOAD NEW CONFIG")
         try:
-            rows = int(self.rows_entry.get())
-            columns = int(self.columns_entry.get())
-            top_left_x = float(self.tl_x_entry.get())
-            top_left_y = float(self.tl_y_entry.get())
-            top_right_x = float(self.tr_x_entry.get())
-            top_right_y = float(self.tr_y_entry.get())
-            bottom_left_x = float(self.bl_x_entry.get())
-            bottom_left_y = float(self.bl_y_entry.get())
-            bottom_right_x = float(self.br_x_entry.get())
-            bottom_right_y = float(self.br_y_entry.get())
-            refilling_tank_x = float(self.tank_x_entry.get())
-            refilling_tank_y = float(self.tank_y_entry.get())
-            probe_diameter = float(self.diameter_entry.get())
-            active_slots = int(self.active_slots_entry.get())
+            probes_rows = int(self.probes_rows_entry.get())
+            probes_columns = int(self.probes_columns_entry.get())
+            probes_top_left_x = float(self.probe_tl_x_entry.get())
+            probes_top_left_y = float(self.probe_tl_y_entry.get())
+            probes_top_right_x = float(self.probe_tr_x_entry.get())
+            probes_top_right_y = float(self.probe_tr_y_entry.get())
+            probes_bottom_left_x = float(self.probe_bl_x_entry.get())
+            probes_bottom_left_y = float(self.probe_bl_y_entry.get())
+            probes_bottom_right_x = float(self.probe_br_x_entry.get())
+            probes_bottom_right_y = float(self.probe_br_y_entry.get())
+
+            tips_rows = int(self.tips_rows_entry.get())
+            tips_columns = int(self.tips_columns_entry.get())
+            tips_top_left_x = float(self.tip_tl_x_entry.get())
+            tips_top_left_y = float(self.tip_tl_y_entry.get())
+            tips_top_right_x = float(self.tip_tr_x_entry.get())
+            tips_top_right_y = float(self.tip_tr_y_entry.get())
+            tips_bottom_left_x = float(self.tip_bl_x_entry.get())
+            tips_bottom_left_y = float(self.tip_bl_y_entry.get())
+            tips_bottom_right_x = float(self.tip_br_x_entry.get())
+            tips_bottom_right_y = float(self.tip_br_y_entry.get())
+
+            refilling_tank_x = float(self.refilling_tank_x_entry.get())
+            refilling_tank_y = float(self.refilling_tank_y_entry.get())
+            disposal_tank_x = float(self.disposal_tank_x_entry.get())
+            disposal_tank_y = float(self.disposal_tank_y_entry.get())
+
+            probes_active_slots = int(self.active_probe_slots_entry.get())
+            tips_active_slots = int(self.active_tip_slots_entry.get())
+
+            safe_z = float(self.safe_z_height_entry.get())
+            dispensing_z = float(self.dispensing_height_entry.get())
+            change_tip_z = float(self.change_tip_height_entry.get())
+            drop_tip_z = float(self.change_tip_height_entry.get())
+            refilling_z = float(self.refilling_height_entry.get())
+
 
             # Update ProbeGrid
             self.bed_controller.make_new_grid(
-                rows=rows,
-                columns=columns,
-                top_left= (top_left_x, top_left_y),
-                top_right = (top_right_x, top_right_y),
-                bottom_left = (bottom_left_x, bottom_left_y),
-                bottom_right=(bottom_right_x, bottom_right_y),
+                probes_rows=probes_rows,
+                probes_columns=probes_columns,
+                probes_top_left= (probes_top_left_x, probes_top_left_y),
+                probes_top_right = (probes_top_right_x, probes_top_right_y),
+                probes_bottom_left = (probes_bottom_left_x, probes_bottom_left_y),
+                probes_bottom_right=(probes_bottom_right_x, probes_bottom_right_y),
+                tips_rows=tips_rows,
+                tips_columns=tips_columns,
+                tips_top_left=(tips_top_left_x, tips_top_left_y),
+                tips_top_right=(tips_top_right_x, tips_top_right_y),
+                tips_bottom_left=(tips_bottom_left_x, tips_bottom_left_y),
+                tips_bottom_right=(tips_bottom_right_x, tips_bottom_right_y),
                 refilling_tank=(refilling_tank_x, refilling_tank_y),
-                probe_diameter=probe_diameter,
-                num_probes=active_slots,
+                disposal_tank=(disposal_tank_x, disposal_tank_y),
+                probes_number=probes_active_slots,
+                tips_number=tips_active_slots,
+                safe_z = safe_z,
+                dispensing_z = dispensing_z,
+                change_tip_z = change_tip_z,
+                drop_tip_z = drop_tip_z,
+                refilling_z = refilling_z
             )
+
+            self.gui_grid_visualization.draw_tank_position()
+            self.gui_grid_visualization.draw_disposal_tank_position()
 
             messagebox.showinfo("Load Config", "New configuration loaded!")
         except ValueError:
@@ -243,16 +388,28 @@ class PrinterGUI(tk.Tk):
     def refresh_display(self):
         """
         Refresh the display to show the current state of the grid and tool position. Do it every second.
-        """
-        self.gui_grid_visualization.draw_probe_grid()
+        # # """
+        # print(f"Refreshing display, tool position -> X: {self.printer_controller.curr_x}, Y: {self.printer_controller.curr_y}")
+        self.gui_grid_visualization.draw_grid(grid = self.bed_controller.probes,
+                                              rows = self.bed_controller.probes_rows,
+                                              columns = self.bed_controller.probes_columns,
+                                              outline_color = "black",
+                                              tag="probes",
+                                              taken_key="filled")
+
+        self.gui_grid_visualization.draw_grid(grid = self.bed_controller.tips,
+                                              rows = self.bed_controller.tips_rows,
+                                              columns = self.bed_controller.tips_columns,
+                                              outline_color = "red",
+                                              tag="tips",
+                                              taken_key="taken")
         self.gui_grid_visualization.draw_tool_position()
-        self.after(100, self.refresh_display)
+        self.after(300, self.refresh_display)
         
     def refresh_tool_position(self):
         """
         Refresh the tool position by sending request through printer controller Do it every 500 ms.
         """
-        pass
         self.printer_controller.update_current_coordinates()
         self.after(1000, self.refresh_tool_position)
 
@@ -266,38 +423,63 @@ class PrinterGUI(tk.Tk):
         """
         print(f"Calibrating slot: {slot}")
         self.printer_controller.update_current_coordinates()
-        if slot == "top-left":
-            self.tl_x_entry.delete(0, tk.END)
-            self.tl_x_entry.insert(0, str(self.printer_controller.curr_x))
-            self.tl_y_entry.delete(0, tk.END)
-            self.tl_y_entry.insert(0, str(self.printer_controller.curr_y))
-        elif slot == "top-right":
-            self.tr_x_entry.delete(0, tk.END)
-            self.tr_x_entry.insert(0, str(self.printer_controller.curr_x))
-            self.tr_y_entry.delete(0, tk.END)
-            self.tr_y_entry.insert(0, str(self.printer_controller.curr_y))
-        elif slot == "bottom-left":
-            self.bl_x_entry.delete(0, tk.END)
-            self.bl_x_entry.insert(0, str(self.printer_controller.curr_x))
-            self.bl_y_entry.delete(0, tk.END)
-            self.bl_y_entry.insert(0, str(self.printer_controller.curr_y))
-        elif slot == "bottom-right":
-            self.br_x_entry.delete(0, tk.END)
-            self.br_x_entry.insert(0, str(self.printer_controller.curr_x))
-            self.br_y_entry.delete(0, tk.END)
-            self.br_y_entry.insert(0, str(self.printer_controller.curr_y))
+        if slot == "probe-top-left":
+            self.probe_tl_x_entry.delete(0, tk.END)
+            self.probe_tl_x_entry.insert(0, str(self.printer_controller.curr_x))
+            self.probe_tl_y_entry.delete(0, tk.END)
+            self.probe_tl_y_entry.insert(0, str(self.printer_controller.curr_y))
+        elif slot == "probe-top-right":
+            self.probe_tr_x_entry.delete(0, tk.END)
+            self.probe_tr_x_entry.insert(0, str(self.printer_controller.curr_x))
+            self.probe_tr_y_entry.delete(0, tk.END)
+            self.probe_tr_y_entry.insert(0, str(self.printer_controller.curr_y))
+        elif slot == "probe-bottom-left":
+            self.probe_bl_x_entry.delete(0, tk.END)
+            self.probe_bl_x_entry.insert(0, str(self.printer_controller.curr_x))
+            self.probe_bl_y_entry.delete(0, tk.END)
+            self.probe_bl_y_entry.insert(0, str(self.printer_controller.curr_y))
+        elif slot == "probe-bottom-right":
+            self.probe_br_x_entry.delete(0, tk.END)
+            self.probe_br_x_entry.insert(0, str(self.printer_controller.curr_x))
+            self.probe_br_y_entry.delete(0, tk.END)
+            self.probe_br_y_entry.insert(0, str(self.printer_controller.curr_y))
+        elif slot == "tip-top-left":
+            self.tip_tl_x_entry.delete(0, tk.END)
+            self.tip_tl_x_entry.insert(0, str(self.printer_controller.curr_x))
+            self.tip_tl_y_entry.delete(0, tk.END)
+            self.tip_tl_y_entry.insert(0, str(self.printer_controller.curr_y))
+        elif slot == "tip-top-right":
+            self.tip_tr_x_entry.delete(0, tk.END)
+            self.tip_tr_x_entry.insert(0, str(self.printer_controller.curr_x))
+            self.tip_tr_y_entry.delete(0, tk.END)
+            self.tip_tr_y_entry.insert(0, str(self.printer_controller.curr_y))
+        elif slot == "tip-bottom-left":
+            self.tip_bl_x_entry.delete(0, tk.END)
+            self.tip_bl_x_entry.insert(0, str(self.printer_controller.curr_x))
+            self.tip_bl_y_entry.delete(0, tk.END)
+            self.tip_bl_y_entry.insert(0, str(self.printer_controller.curr_y))
+        elif slot == "tip-bottom-right":
+            self.tip_br_x_entry.delete(0, tk.END)
+            self.tip_br_x_entry.insert(0, str(self.printer_controller.curr_x))
+            self.tip_br_y_entry.delete(0, tk.END)
+            self.tip_br_y_entry.insert(0, str(self.printer_controller.curr_y))
         elif slot == "tank":
-            self.tank_x_entry.delete(0, tk.END)
-            self.tank_x_entry.insert(0, str(self.printer_controller.curr_x))
-            self.tank_y_entry.delete(0, tk.END)
-            self.tank_y_entry.insert(0, str(self.printer_controller.curr_y))
-
-
-    def calibrate_top_height(self):
-        messagebox.showinfo("Calibration", "Top height calibrated!")
-
-    def load_existing_config(self):
-        messagebox.showinfo("Load Config", "Existing configuration loaded!")
+            self.refilling_tank_x_entry.delete(0, tk.END)
+            self.refilling_tank_x_entry.insert(0, str(self.printer_controller.curr_x))
+            self.refilling_tank_y_entry.delete(0, tk.END)
+            self.refilling_tank_y_entry.insert(0, str(self.printer_controller.curr_y))
+        elif slot == "safe_z":
+            self.safe_z_entry.delete(0, tk.END)
+            self.safe_z_entry.insert(0, str(self.printer_controller.curr_z))
+        elif slot == "dispensing_z":
+            self.dispensing_z_entry.delete(0, tk.END)
+            self.dispensing_z_entry.insert(0, str(self.printer_controller.curr_z))
+        elif slot == "change_tip_z":
+            self.change_tip_z_entry.delete(0, tk.END)
+            self.change_tip_z_entry.insert(0, str(self.printer_controller.curr_z))
+        elif slot == "drop_tip_z":
+            self.drop_tip_z_entry.delete(0, tk.END)
+            self.drop_tip_z_entry.insert(0, str(self.printer_controller.curr_z))
 
     def move_to_coordinates(self):
         """

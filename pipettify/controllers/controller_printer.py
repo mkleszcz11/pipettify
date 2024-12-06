@@ -66,9 +66,9 @@ class PrinterController:
                 time.sleep(0.1)
 
             # Combine response for debugging
-            response = "\n".join(response_lines)
-            print(f"Full response -> {response}")
-            print("-----")
+            # response = "\n".join(response_lines)
+            # print(f"Full response -> {response}")
+            # print("-----")
 
             # Parse the coordinates from the response
             for line in response_lines:
