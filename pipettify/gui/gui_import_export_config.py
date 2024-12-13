@@ -26,6 +26,7 @@ class ConfigImportExport:
                 "bottom_left": (self.interface.probe_bl_x_entry.get(), self.interface.probe_bl_y_entry.get()),
                 "bottom_right": (self.interface.probe_br_x_entry.get(), self.interface.probe_br_y_entry.get()),
             },
+            "active_probe_slots": self.interface.active_probe_slots_entry.get(),
             "tips_rows": self.interface.tips_rows_entry.get(),
             "tips_columns": self.interface.tips_columns_entry.get(),
             "tips": {
@@ -34,6 +35,7 @@ class ConfigImportExport:
                 "bottom_left": (self.interface.tip_bl_x_entry.get(), self.interface.tip_bl_y_entry.get()),
                 "bottom_right": (self.interface.tip_br_x_entry.get(), self.interface.tip_br_y_entry.get()),
             },
+            "active_tip_slots": self.interface.active_tip_slots_entry.get(),
             "refilling_tank": (self.interface.refilling_tank_x_entry.get(), self.interface.refilling_tank_y_entry.get()),
             "disposal_tank": (self.interface.disposal_tank_x_entry.get(), self.interface.disposal_tank_y_entry.get()),
             "z_heights": {
@@ -104,6 +106,9 @@ class ConfigImportExport:
                 self.interface.probe_br_y_entry.delete(0, tk.END)
                 self.interface.probe_br_y_entry.insert(0, config["probes"]["bottom_right"][1])
 
+                self.interface.active_probe_slots_entry.delete(0, tk.END)
+                self.interface.active_probe_slots_entry.insert(0, config["active_probe_slots"])
+
                 self.interface.tips_rows_entry.delete(0, tk.END)
                 self.interface.tips_rows_entry.insert(0, config["tips_rows"])
                 self.interface.tips_columns_entry.delete(0, tk.END)
@@ -138,6 +143,9 @@ class ConfigImportExport:
                 self.interface.disposal_tank_x_entry.insert(0, config["disposal_tank"][0])
                 self.interface.disposal_tank_y_entry.delete(0, tk.END)
                 self.interface.disposal_tank_y_entry.insert(0, config["disposal_tank"][1])
+                
+                self.interface.active_tip_slots_entry.delete(0, tk.END)
+                self.interface.active_tip_slots_entry.insert(0, config["active_tip_slots"])
 
                 self.interface.safe_z_height_entry.delete(0, tk.END)
                 self.interface.safe_z_height_entry.insert(0, config["z_heights"]["safe_z"])

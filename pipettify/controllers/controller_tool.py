@@ -12,6 +12,7 @@ class EndEffectorController:
         self.bed_controller = bed_controller
         self.neutral_position = 0.0
         self.current_position = None
+        self.pushed_position_diff = -30.5  # -31 mm for push button
         self.state = "neutral"  # Track the end effector state (push_button_pressed, tip_button_pressed, neutral)
         self.last_operation = None  # Track the last operation performed ("drop_tip", "refill")
 
@@ -19,8 +20,8 @@ class EndEffectorController:
         """
         Press push button. It should keep the button pressed.
         """
-        target_position = self._calculate_button_press_position("push")
-        result = self._move_and_wait(target_position, timeout, poll_interval)
+        # target_position = self._calculate_button_press_position("push")
+        result = self._move_and_wait(self.neutral_position + self.pushed_position_diff, timeout, poll_interval)
         if result:
             self.state = "push_button_pressed"
         return result
@@ -99,7 +100,7 @@ class EndEffectorController:
             self.state = "neutral"
         return result
 
-    def _move_to_position(self, position):
+    def move_to_position(self, position):
         """
         Move the motor to the specified position.
         """
@@ -113,7 +114,7 @@ class EndEffectorController:
         """
         Move the motor to the specified target position and wait until it reaches the position.
         """
-        self._move_to_position(target_position)
+        self.move_to_position(target_position)
         start_time = time.time()
         while time.time() - start_time < timeout:
             if self._is_at_position(target_position):
@@ -130,7 +131,7 @@ class EndEffectorController:
         """
         # current_position = self._get_absolute_motor_position()
         self._get_absolute_motor_position()
-        print(f"Current position: {self.current_position} | Target position: {target_position} | diff: {abs(self.current_position - target_position)}")
+        # print(f"Current position: {self.current_position} | Target position: {target_position} | diff: {abs(self.current_position - target_position)}")
         return abs(self.current_position - target_position) <= tolerance
 
     def _calculate_button_press_position(self, button_type):

@@ -4,6 +4,7 @@ from tkinter import messagebox
 from pipettify.controllers.controller_printer import PrinterController
 from pipettify.controllers.controller_bed import BedController
 from pipettify.gui.gui_manual_movement import ManualMovementWindow
+from pipettify.gui.gui_tool_calibration import CalibrateToolWindow
 from pipettify.gui.gui_grid_visualization import GuiGridVisualization
 from pipettify.gui.gui_import_export_config import ConfigImportExport
 
@@ -26,9 +27,9 @@ class PrinterGUI(tk.Tk):
         # Add "Manual Movement" button
         tk.Button(self, text="Manual Movement", command=self.open_manual_movement).pack(pady=10)
         
-        # Add state display box
-        self.state_label = tk.Label(self, text=f"State: {self.state_machine.current_state.id}", font=("Arial", 16))
-        self.state_label.pack(pady=10)
+        # # Add state display box
+        # self.state_label = tk.Label(self, text=f"State: {self.state_machine.current_state.id}", font=("Arial", 16))
+        # self.state_label.pack(pady=10)
 
         # Default bed dimensions (in mm)
         self.bed_width = 300
@@ -168,14 +169,14 @@ class PrinterGUI(tk.Tk):
         self.refilling_tank_x_entry.grid(row=2, column=8)
         self.refilling_tank_y_entry = tk.Entry(slot_pos_frame, width=5)
         self.refilling_tank_y_entry.grid(row=2, column=9)
-        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "tank")).grid(row=2, column=10)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "refilling_tank")).grid(row=2, column=10)
 
         tk.Label(slot_pos_frame, text="Disposal:").grid(row=3, column=7, sticky="w", padx=(slot_pos_frame_padding_x, 0))
         self.disposal_tank_x_entry = tk.Entry(slot_pos_frame, width=5)
         self.disposal_tank_x_entry.grid(row=3, column=8)
         self.disposal_tank_y_entry = tk.Entry(slot_pos_frame, width=5)
         self.disposal_tank_y_entry.grid(row=3, column=9)
-        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "tank")).grid(row=3, column=10)
+        tk.Button(slot_pos_frame, text="set", command=partial(self.calibrate_slot, "disposal_tank")).grid(row=3, column=10)
 
         ##############################
         # Active slots calibration
@@ -242,13 +243,13 @@ class PrinterGUI(tk.Tk):
 
         tk.Button(config_button_frame, text="Import Configuration", command=self.gui_import_export.import_config).grid(row=0, column=0)
         tk.Button(config_button_frame, text="Export Configuration", command=self.gui_import_export.export_config).grid(row=0, column=1)
-        tk.Button(config_button_frame, text="Load Configuration", command=self.load_new_config).grid(row=0, column=2)
+        tk.Button(config_button_frame, text="Apply Configuration", command=self.load_new_config).grid(row=0, column=2)
 
         # Home XYZ button
         tk.Button(move_frame, text="Home", command=self.printer_controller.home).grid(row=0, column=5)
 
         # HOME E button
-        tk.Button(move_frame, text="Home E", command=self.printer_controller.tool_controller.calibrate_neutral_position).grid(row=0, column=6)
+        tk.Button(move_frame, text="Home E", command=self.open_calibrate_tool).grid(row=0, column=6)
 
         # Execution Controls
         controls_frame = tk.Frame(self)
@@ -349,7 +350,7 @@ class PrinterGUI(tk.Tk):
             safe_z = float(self.safe_z_height_entry.get())
             dispensing_z = float(self.dispensing_height_entry.get())
             change_tip_z = float(self.change_tip_height_entry.get())
-            drop_tip_z = float(self.change_tip_height_entry.get())
+            drop_tip_z = float(self.drop_tip_height_entry.get())
             refilling_z = float(self.refilling_height_entry.get())
 
 
@@ -411,7 +412,7 @@ class PrinterGUI(tk.Tk):
         Refresh the tool position by sending request through printer controller Do it every 500 ms.
         """
         self.printer_controller.update_current_coordinates()
-        self.after(1000, self.refresh_tool_position)
+        self.after(400, self.refresh_tool_position)
 
     def calibrate_slot(self, slot: str):
         """
@@ -463,23 +464,31 @@ class PrinterGUI(tk.Tk):
             self.tip_br_x_entry.insert(0, str(self.printer_controller.curr_x))
             self.tip_br_y_entry.delete(0, tk.END)
             self.tip_br_y_entry.insert(0, str(self.printer_controller.curr_y))
-        elif slot == "tank":
+        elif slot == "refilling_tank":
             self.refilling_tank_x_entry.delete(0, tk.END)
             self.refilling_tank_x_entry.insert(0, str(self.printer_controller.curr_x))
             self.refilling_tank_y_entry.delete(0, tk.END)
             self.refilling_tank_y_entry.insert(0, str(self.printer_controller.curr_y))
+        elif slot == "disposal_tank":
+            self.disposal_tank_x_entry.delete(0, tk.END)
+            self.disposal_tank_x_entry.insert(0, str(self.printer_controller.curr_x))
+            self.disposal_tank_y_entry.delete(0, tk.END)
+            self.disposal_tank_y_entry.insert(0, str(self.printer_controller.curr_y))
         elif slot == "safe_z":
-            self.safe_z_entry.delete(0, tk.END)
-            self.safe_z_entry.insert(0, str(self.printer_controller.curr_z))
+            self.safe_z_height_entry.delete(0, tk.END)
+            self.safe_z_height_entry.insert(0, str(self.printer_controller.curr_z))
+        elif slot == "refilling_z":
+            self.refilling_height_entry.delete(0, tk.END)
+            self.refilling_height_entry.insert(0, str(self.printer_controller.curr_z))
         elif slot == "dispensing_z":
-            self.dispensing_z_entry.delete(0, tk.END)
-            self.dispensing_z_entry.insert(0, str(self.printer_controller.curr_z))
+            self.dispensing_height_entry.delete(0, tk.END)
+            self.dispensing_height_entry.insert(0, str(self.printer_controller.curr_z))
         elif slot == "change_tip_z":
-            self.change_tip_z_entry.delete(0, tk.END)
-            self.change_tip_z_entry.insert(0, str(self.printer_controller.curr_z))
+            self.change_tip_height_entry.delete(0, tk.END)
+            self.change_tip_height_entry.insert(0, str(self.printer_controller.curr_z))
         elif slot == "drop_tip_z":
-            self.drop_tip_z_entry.delete(0, tk.END)
-            self.drop_tip_z_entry.insert(0, str(self.printer_controller.curr_z))
+            self.drop_tip_height_entry.delete(0, tk.END)
+            self.drop_tip_height_entry.insert(0, str(self.printer_controller.curr_z))
 
     def move_to_coordinates(self):
         """
@@ -502,6 +511,11 @@ class PrinterGUI(tk.Tk):
     def open_manual_movement(self):
         # Create and display the manual movement window
         manual_movement_window = ManualMovementWindow(self.printer_controller)
+        manual_movement_window.grab_set()  # Focus on the new window
+        
+    def open_calibrate_tool(self):
+        # Create and display the manual movement window
+        manual_movement_window = CalibrateToolWindow(self.printer_controller.tool_controller)
         manual_movement_window.grab_set()  # Focus on the new window
 
     def reset_state(self): #TODO -> change name
@@ -534,4 +548,5 @@ class PrinterGUI(tk.Tk):
         Stop the state machine execution.
         """
         self.stop_flag.set()
+        self.printer_controller.emergency_stop()
         print("Execution stopped.")

@@ -2,25 +2,26 @@
     "bed_width": "300",
     "bed_height": "300",
     "probes_rows": "5",
-    "probes_columns": "6",
+    "probes_columns": "5",
     "probes": {
         "top_left": [
-            "82",
-            "10"
+            "42.0",
+            "65.5"
         ],
         "top_right": [
-            "250",
-            "180"
+            "242.0",
+            "65.5"
         ],
         "bottom_left": [
-            "42",
-            "150"
+            "42.0",
+            "140.5"
         ],
         "bottom_right": [
-            "250",
-            "150"
+            "242.0",
+            "140.5"
         ]
     },
+    "active_probe_slots": "",
     "tips_rows": "5",
     "tips_columns": "5",
     "tips": {
@@ -41,19 +42,20 @@
             "280"
         ]
     },
+    "active_tip_slots": "25",
     "refilling_tank": [
-        "10",
-        "10"
+        "120",
+        "250"
     ],
     "disposal_tank": [
         "40",
         "250"
     ],
     "z_heights": {
-        "safe_z": "150",
-        "dispensing_z": "100",
-        "change_tip_z": "50",
-        "drop_tip_z": "250",
-        "refilling_z": "50"
+        "safe_z": "50",
+        "dispensing_z": "40",
+        "change_tip_z": "40",
+        "drop_tip_z": "40",
+        "refilling_z": "40"
     }
 }
