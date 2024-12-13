@@ -1,0 +1,61 @@
+{
+    "bed_width": "300",
+    "bed_height": "300",
+    "probes_rows": "4",
+    "probes_columns": "9",
+    "probes": {
+        "top_left": [
+            "42.0",
+            "65.5"
+        ],
+        "top_right": [
+            "242.0",
+            "65.5"
+        ],
+        "bottom_left": [
+            "42.0",
+            "140.5"
+        ],
+        "bottom_right": [
+            "242.0",
+            "140.5"
+        ]
+    },
+    "active_probe_slots": "36",
+    "tips_rows": "12",
+    "tips_columns": "8",
+    "tips": {
+        "top_left": [
+            "111.3",
+            "190.6"
+        ],
+        "top_right": [
+            "174.1",
+            "191.0"
+        ],
+        "bottom_left": [
+            "111.3",
+            "289.8"
+        ],
+        "bottom_right": [
+            "173.5",
+            "290.0"
+        ]
+    },
+    "active_tip_slots": "96",
+    "refilling_tank": [
+        "44.0",
+        "255.0"
+    ],
+    "disposal_tank": [
+        "245.0",
+        "255.0"
+    ],
+    "z_heights": {
+        "safe_z": "143.0",
+        "dispensing_z": "131.0",
+        "change_tip_z": "49.0",
+        "drop_tip_z": "155",
+        "refilling_z": "93.0"
+    }
+}

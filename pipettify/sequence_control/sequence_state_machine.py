@@ -373,6 +373,7 @@ class PipettifyStateMachine(StateMachine):
             return False
         
         print("All dispensing state flags are marked, transitioning to moving_to_the_next_probe state.")
+        self.bed_controller.update_probe_state(self.current_probe[0], self.current_probe[1], True)
         self.finish_dispensing()
         return True
 

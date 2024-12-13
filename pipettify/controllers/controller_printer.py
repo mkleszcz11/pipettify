@@ -16,7 +16,7 @@ class PrinterController:
         self.curr_x = None
         self.curr_y = None
         self.curr_z = None
-        self.max_speed = 10800
+        self.max_speed = 14000
         self.serial = None
 
     def configure_serial_connection(self, port='/dev/ttyUSB0', baudrate=115200):
@@ -106,7 +106,7 @@ class PrinterController:
         self.send_gcode(f"G1 X{x} Y{y} Z{z} F{self.max_speed}")
         self.send_gcode(command)
         
-        self.update_current_coordinates()
+        # self.update_current_coordinates()
 
     # def move_relative(self, dx, dy, dz):
     #     """
@@ -153,6 +153,14 @@ class PrinterController:
         self.curr_x = 0.0
         self.curr_y = 0.0
         self.curr_z = 0.0
+
+    def emergency_stop(self):
+        """
+        Send an emergency stop command to the printer.
+        """
+        print("--- EMERGENCY STOP ---")
+        command = "M112"
+        self.send_gcode(command)
 
     ############################
     # ADDITIONAL FUNCTIONALITY #
