@@ -7,7 +7,7 @@ from pipettify.controllers.controller_bed import BedController
 class PrinterController:
     """
     Class for controlling 3D printer. To controll the end effector, use end effector class.
-    """
+    """    
     def __init__(self):
         self.bed_controller = BedController()
         self.tool_controller = EndEffectorController(send_gcode_func = self.send_gcode,
@@ -16,7 +16,8 @@ class PrinterController:
         self.curr_x = None
         self.curr_y = None
         self.curr_z = None
-        self.max_speed = 14000
+        self.max_speed = 12000
+        self.max_speed_z = 1000
         self.serial = None
 
     def configure_serial_connection(self, port='/dev/ttyUSB0', baudrate=115200):
@@ -89,7 +90,7 @@ class PrinterController:
         except Exception as e:
             print(f"Error while updating coordinates: {e}")
 
-    def move_to_coordinates(self, x, y, z, timeout=30, poll_interval=0.1):
+    def move_to_coordinates(self, x, y, z, speed=None, timeout=30, poll_interval=0.1):
         """
         Move to the specified coordinates and wait until the move is complete.
         """
@@ -101,9 +102,18 @@ class PrinterController:
             print(f"Invalid coordinates: X={x}, Y={y}, Z={z}")
             return
 
+        if speed:
+            command = f"M203 X{self.max_speed} Y{self.max_speed} Z{self.max_speed_z} E{speed}"
+        else:
+            command = f"M203 X{self.max_speed} Y{self.max_speed} Z{self.max_speed_z} E{self.max_speed}"
+        self.send_gcode(command)
+
         command = "M302 S0"
         self.send_gcode(command)
-        self.send_gcode(f"G1 X{x} Y{y} Z{z} F{self.max_speed}")
+        if speed:
+            self.send_gcode(f"G1 X{x} Y{y} Z{z} F{speed}")
+        else:
+            self.send_gcode(f"G1 X{x} Y{y} Z{z} F{self.max_speed}")
         self.send_gcode(command)
         
         # self.update_current_coordinates()

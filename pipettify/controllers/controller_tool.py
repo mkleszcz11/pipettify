@@ -12,11 +12,22 @@ class EndEffectorController:
         self.bed_controller = bed_controller
         self.neutral_position = 0.0
         self.current_position = None
-        self.pushed_position_diff = -30.5  # -31 mm for push button
+        self.pushed_half_position_diff = -17.5  # -15.5 mm for half push
+        self.pushed_position_diff = -30.5       # -31 mm for full push
         self.state = "neutral"  # Track the end effector state (push_button_pressed, tip_button_pressed, neutral)
         self.last_operation = None  # Track the last operation performed ("drop_tip", "refill")
 
-    def press_push_button(self, timeout=10, poll_interval=0.1):
+    def press_push_button_half(self, timeout=10, poll_interval=0.1):
+        """
+        Press push button halfway. It should keep the button pressed halfway.
+        """
+        # target_position = self._calculate_button_press_position("push")
+        result = self._move_and_wait(self.neutral_position + self.pushed_half_position_diff, timeout, poll_interval)
+        if result:
+            self.state = "push_button_pressed"
+        return
+
+    def press_push_button_full(self, timeout=10, poll_interval=0.1):
         """
         Press push button. It should keep the button pressed.
         """
@@ -54,7 +65,7 @@ class EndEffectorController:
         Perform refill operation. This means pressing push button and getting back to neutral.
         """
         print("EXECUTE REFILL")
-        if not self.press_push_button(timeout, poll_interval):
+        if not self.press_push_button_full(timeout, poll_interval):
             print("Failed to press push button.")
             return False
         
@@ -74,7 +85,7 @@ class EndEffectorController:
         print(f"EXECUTE DISPENSE on probe {probe}")
     
         # Press the push button to dispense
-        if not self.press_push_button(timeout, poll_interval):
+        if not self.press_push_button_full(timeout, poll_interval):
             print("Failed to press push button for dispensing.")
             return False
         

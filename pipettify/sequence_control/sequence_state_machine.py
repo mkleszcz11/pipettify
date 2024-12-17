@@ -27,11 +27,16 @@ class PipettifyStateMachine(StateMachine):
     finish_disposing_tip = disposing_tip.to(moving_to_next_tip)
     complete_pipetting = dispensing.to(completed)
     reset_to_idle = (
+        moving_to_next_tip.to(idle) |
+        changing_tip.to(idle) |
         moving_to_refill.to(idle) |
         refilling.to(idle) |
         moving_to_next_probe.to(idle) |
         dispensing.to(idle) |
-        completed.to(idle)
+        moving_to_disposal.to(idle) |
+        disposing_tip.to(idle) |
+        completed.to(idle) |
+        idle.to(idle)
     )
 
     def __init__(self, printer_controller, pipette_controller, bed_controller):
@@ -43,6 +48,7 @@ class PipettifyStateMachine(StateMachine):
         self.flags = {
             "moving_to_next_tip_moved_up_to_safe_z": False,
             "moving_to_next_tip_moved": False,
+            "changing_tip_moved_down_first_step": False,
             "changing_tip_moved_down": False,
             "changing_tip_moved_up": False,
             "moving_to_refill_moved": False,
@@ -144,12 +150,29 @@ class PipettifyStateMachine(StateMachine):
         1. Move Down
         2. Move Up
         """
+        if not self.flags["changing_tip_moved_down_first_step"]:
+            print("Moving down to change tip.")
+            self.printer_controller.move_to_coordinates(
+                self.bed_controller.tips[self.current_tip]["coordinates"][0],
+                self.bed_controller.tips[self.current_tip]["coordinates"][1],
+                self.bed_controller.change_tip_z + 10
+            )
+            
+            if self.printer_controller.is_at_position(self.bed_controller.tips[self.current_tip]["coordinates"][0],
+                                                      self.bed_controller.tips[self.current_tip]["coordinates"][1],
+                                                      self.bed_controller.change_tip_z + 10):
+                print("Printer moved down right above  position.")
+                self.flags["changing_tip_moved_down_first_step"] = True
+
+            return False
+        
         if not self.flags["changing_tip_moved_down"]:
             print("Moving down to change tip.")
             self.printer_controller.move_to_coordinates(
                 self.bed_controller.tips[self.current_tip]["coordinates"][0],
                 self.bed_controller.tips[self.current_tip]["coordinates"][1],
-                self.bed_controller.change_tip_z
+                self.bed_controller.change_tip_z,
+                speed = 200
             )
             
             if self.printer_controller.is_at_position(self.bed_controller.tips[self.current_tip]["coordinates"][0],
@@ -217,7 +240,7 @@ class PipettifyStateMachine(StateMachine):
         
         if not self.flags["refilling_pressed_button"]:
             print("Pressing button to refill.")
-            self.pipette_controller.press_push_button()
+            self.pipette_controller.press_push_button_half()
             
             if self.pipette_controller.state == "push_button_pressed":
                 print("Button pressed.")
@@ -333,7 +356,7 @@ class PipettifyStateMachine(StateMachine):
         
         if not self.flags["dispensing_pressed_button"]:
             print("Pressing button to dispense.")
-            self.pipette_controller.press_push_button()
+            self.pipette_controller.press_push_button_full()
             
             if self.pipette_controller.state == "push_button_pressed":
                 print("Button pressed.")
@@ -429,4 +452,12 @@ class PipettifyStateMachine(StateMachine):
         print("All disposing tip state flags are marked, transitioning to moving_to_next_tip state.")
         self.clear_flags() # THE LAST STEP - CLEAR ALL FLAGS AND REPEAT THE CYCLE
         self.finish_disposing_tip()
+        return True
+    
+    def reset(self):
+        """
+        Reset the state machine to the idle state.
+        """
+        self.clear_flags()
+        self.reset_to_idle()
         return True
