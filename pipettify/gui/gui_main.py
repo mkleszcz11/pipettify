@@ -22,7 +22,7 @@ class PrinterGUI(tk.Tk):
         
         # State machine variables
         self.stop_flag = threading.Event()
-        self.state_machine_polling_interval = 300  # Poll every 100ms
+        self.state_machine_polling_interval = 200  # Poll every 100ms
 
         # Add "Manual Movement" button
         tk.Button(self, text="Manual Movement", command=self.open_manual_movement).pack(pady=10)

@@ -16,8 +16,8 @@ class PrinterController:
         self.curr_x = None
         self.curr_y = None
         self.curr_z = None
-        self.max_speed = 12000
-        self.max_speed_z = 1000
+        self.max_speed = 15000
+        self.max_speed_z = 1300
         self.serial = None
 
     def configure_serial_connection(self, port='/dev/ttyUSB0', baudrate=115200):

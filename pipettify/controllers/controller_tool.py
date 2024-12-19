@@ -118,7 +118,7 @@ class EndEffectorController:
         print(f"Moving motor to position: {position} mm")
         self.send_gcode("M302 P1")  # Enable cold extrusion
         # self.send_gcode("G92 E0")  # Reset extruder position to 0
-        self.send_gcode(f"G1 E{position} F500")  # Move extruder motor by 'position' (linear mm)
+        self.send_gcode(f"G1 E{position} F1000")  # Move extruder motor by 'position' (linear mm)
         return True
 
     def _move_and_wait(self, target_position, timeout=10, poll_interval=0.1):

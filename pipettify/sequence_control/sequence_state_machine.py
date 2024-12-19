@@ -172,7 +172,7 @@ class PipettifyStateMachine(StateMachine):
                 self.bed_controller.tips[self.current_tip]["coordinates"][0],
                 self.bed_controller.tips[self.current_tip]["coordinates"][1],
                 self.bed_controller.change_tip_z,
-                speed = 200
+                speed = 300
             )
             
             if self.printer_controller.is_at_position(self.bed_controller.tips[self.current_tip]["coordinates"][0],
