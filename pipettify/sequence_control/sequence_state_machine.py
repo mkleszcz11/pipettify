@@ -25,7 +25,7 @@ class PipettifyStateMachine(StateMachine):
     finish_dispensing = dispensing.to(moving_to_disposal)
     arrive_at_disposal = moving_to_disposal.to(disposing_tip)
     finish_disposing_tip = disposing_tip.to(moving_to_next_tip)
-    complete_pipetting = dispensing.to(completed)
+    complete_pipetting = dispensing.to(completed) | changing_tip.to(completed)
     reset_to_idle = (
         moving_to_next_tip.to(idle) |
         changing_tip.to(idle) |
@@ -150,6 +150,12 @@ class PipettifyStateMachine(StateMachine):
         1. Move Down
         2. Move Up
         """
+        
+        if self.bed_controller.next_probe() is None:
+            print("All tips have been used. Transitioning to moving_to_disposal state.")
+            self.complete_pipetting()
+            return True
+        
         if not self.flags["changing_tip_moved_down_first_step"]:
             print("Moving down to change tip.")
             self.printer_controller.move_to_coordinates(
@@ -172,7 +178,7 @@ class PipettifyStateMachine(StateMachine):
                 self.bed_controller.tips[self.current_tip]["coordinates"][0],
                 self.bed_controller.tips[self.current_tip]["coordinates"][1],
                 self.bed_controller.change_tip_z,
-                speed = 300
+                speed = 200
             )
             
             if self.printer_controller.is_at_position(self.bed_controller.tips[self.current_tip]["coordinates"][0],
@@ -188,7 +194,8 @@ class PipettifyStateMachine(StateMachine):
             self.printer_controller.move_to_coordinates(
                 self.bed_controller.tips[self.current_tip]["coordinates"][0],
                 self.bed_controller.tips[self.current_tip]["coordinates"][1],
-                self.bed_controller.safe_z
+                self.bed_controller.safe_z,
+                speed = 800
             )
             
             if self.printer_controller.is_at_position(self.bed_controller.tips[self.current_tip]["coordinates"][0],
@@ -416,7 +423,7 @@ class PipettifyStateMachine(StateMachine):
                 print("Printer moved to disposal position.")
                 self.flags["moving_to_disposal_moved"] = True
             return False
-        
+
         print("All moving to disposal state flags are marked, transitioning to disposing_tip state.")
         self.arrive_at_disposal()
         return True
